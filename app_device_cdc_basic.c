@@ -69,16 +69,11 @@ void PutsStringCPtr(char *str)
 
 
 unsigned short gcounter = 0;
-Queue queue;
-static unsigned char queue_buffer[32];
-int playing = 0;
-int waiting_data = 0;
 unsigned char debug_buffer[32]; // size needs bigger than queue_buffer
 int debug_buffer_size = 0;
 
 
 #define T0CNT (65536-375)
-//#define T0CNT (65536-375+117)
 void interrupt_func(void)
 {
   if (INTCONbits.TMR0IF == 1) {
@@ -98,13 +93,6 @@ void interrupt_func(void)
     //  PORTC = 0xFFFF;
     //  //CCPR1L  = 63;
     //  CCPR1L  = 1;
-    }
-
-    if (queue_size(&queue) > 0) {
-      unsigned char raw;
-      queue_dequeue(&queue, &raw, 1);
-      CCPR1L = (raw >> 2) & 0x3F;
-      CCP1CONbits.DC1B = (raw & 0x3);
     }
   }
 }
@@ -140,7 +128,7 @@ void init(void)
   INTCONbits.GIEL = 1;
 
 
-  // timer1
+  // timer1 (for waiting USB Serial data)
   T1CONbits.TMR1CS = 0;    // 内部クロック (FOSC/4)
   T1CONbits.T1CKPS = 0b11; // prescaler 1:8
   T1CONbits.RD16 = 1;      // 16bit
@@ -174,9 +162,6 @@ void init(void)
   T2CONbits.T2CKPS = 0b00;  // prescaler 1:1
   T2CONbits.T2OUTPS = 0;    // postscaler 1:1
   T2CONbits.TMR2ON = 1;     // Timer ON
-
-  // queue
-  queue_init(&queue, queue_buffer, sizeof(queue_buffer));
 }
 
 /*********************************************************************
@@ -254,32 +239,16 @@ void APP_DeviceCDCBasicDemoTasks()
     {
       uint8_t numBytesRead;
       numBytesRead = getsUSBUSART(readBuffer, sizeof(readBuffer));
-      if (numBytesRead >= 2) {
-        unsigned char cmd = readBuffer[0];
-        unsigned char size = readBuffer[1];
-        switch(cmd) {
-        case 1: // 演奏開始
-          playing = 1;
-          waiting_data = 0;
-          break;
-        case 3: // データ転送
-          queue_enqueue(&queue, &readBuffer[2], size);
-          if (size == 0)
-            playing = 0;
-          waiting_data = 0;
-          break;
-        }
-      }
 
-      if (playing & waiting_data == 0) {
-        if ((size_t)queue_size(&queue) <= (sizeof(queue_buffer)*3/4)) {
-          waiting_data = 1;
-          writeBuffer[0] = 2;
-          writeBuffer[1] = 1;
-          writeBuffer[2] = sizeof(queue_buffer) - queue_size(&queue) - 1;
-          putUSBUSART(writeBuffer, 3);
-        }
-      }
+      //if (playing & waiting_data == 0) {
+      //  if ((size_t)queue_size(&queue) <= (sizeof(queue_buffer)*3/4)) {
+      //    waiting_data = 1;
+      //    writeBuffer[0] = 2;
+      //    writeBuffer[1] = 1;
+      //    writeBuffer[2] = sizeof(queue_buffer) - queue_size(&queue) - 1;
+      //    putUSBUSART(writeBuffer, 3);
+      //  }
+      //}
     }
 
     CDCTxService();
