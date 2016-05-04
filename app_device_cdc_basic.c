@@ -80,6 +80,7 @@ unsigned char accel_y_last_pin_state = 0;
 unsigned char debug_buffer[32]; // size needs bigger than queue_buffer
 int debug_buffer_size = 0;
 unsigned char debug_flag = 0;
+unsigned short debug_counter = 0;
 
 #define T0CNT (65536-375)
 char led_state = 1;
@@ -99,9 +100,10 @@ void interrupt_func(void)
 
   if (INTCONbits.RABIF == 1) {
     unsigned short now = TMR3;
-    TMR3 = 0;
-    PIR2bits.TMR3IF = 0;
+    //TMR3 = 0;
+    //PIR2bits.TMR3IF = 0;
     INTCONbits.RABIF = 0;
+    debug_counter++;
     if (accel_x_last_pin_state != PORTBbits.RB6) {
       accel_x_last_pin_state = PORTBbits.RB6;
       if (accel_x_last_pin_state == 0) {
@@ -324,12 +326,13 @@ void APP_DeviceCDCBasicDemoTasks()
       if (debug_flag) {
         debug_flag = 0;
         writeBuffer[0] = 4;
-        writeBuffer[1] = 8;
+        writeBuffer[1] = 9;
         *((unsigned short *)(&writeBuffer[2])) = accel_x_on;
         *((unsigned short *)(&writeBuffer[4])) = accel_x_off;
         *((unsigned short *)(&writeBuffer[6])) = accel_y_on;
         *((unsigned short *)(&writeBuffer[8])) = accel_y_off;
-        putUSBUSART(writeBuffer, 8+2);
+        writeBuffer[10] = debug_counter;
+        putUSBUSART(writeBuffer, writeBuffer[1]+2);
       }
     }
 

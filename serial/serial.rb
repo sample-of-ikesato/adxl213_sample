@@ -63,7 +63,12 @@ while true
     end
   end
   if cmd == 4
-    p [size, data]
+    accel_x_on = data[0] + (data[1] << 8)
+    accel_x_off = data[2] + (data[3] << 8)
+    accel_y_on = data[4] + (data[5] << 8)
+    accel_y_off = data[6] + (data[7] << 8)
+    counter = data[8]
+    p [accel_x_on, accel_x_off, accel_y_on, accel_y_off, counter]
   elsif cmd == 9
     dfp.write(data.pack("C*")) if size > 0
   end
