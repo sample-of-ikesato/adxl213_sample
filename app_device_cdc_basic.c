@@ -69,54 +69,116 @@ void PutsStringCPtr(char *str)
 
 
 unsigned short gcounter = 0;
+unsigned short accel_x_on = 0;
+unsigned short accel_y_on = 0;
+unsigned short accel_x_off = 0;
+unsigned short accel_y_off = 0;
+unsigned short accel_x_last_time = 0;
+unsigned short accel_y_last_time = 0;
+unsigned char accel_x_last_pin_state = 0;
+unsigned char accel_y_last_pin_state = 0;
 unsigned char debug_buffer[32]; // size needs bigger than queue_buffer
 int debug_buffer_size = 0;
 
-
 #define T0CNT (65536-375)
+char led_state = 1;
 void interrupt_func(void)
 {
   if (INTCONbits.TMR0IF == 1) {
-    gcounter++;
     TMR0 = T0CNT;
     INTCONbits.TMR0IF = 0;
+    gcounter++;
     if (gcounter > 8000) {
       gcounter = 0;
-      PORTBbits.RB7 = !PORTBbits.RB7;
-    //  PORTA = 0;
-    //  PORTB = 0;
-    //  PORTC = 0;
-    //  CCPR1L  = 0x00;
-    //} else {
-    //  PORTA = 0xFFFF;
-    //  PORTB = 0xFFFF;
-    //  PORTC = 0xFFFF;
-    //  //CCPR1L  = 63;
-    //  CCPR1L  = 1;
+      PORTCbits.RC7 = led_state;
+      led_state = !led_state;
     }
   }
+
+#if 0
+  if (INTCONbits.RABIF == 1) {
+    unsigned short now = TMR3;
+    TMR3 = 0;
+    PIR2bits.TMR3IF = 0;
+    INTCONbits.RABIF = 0;
+    if (accel_x_last_pin_state != PORTBbits.RB6) {
+      accel_x_last_pin_state = PORTBbits.RB6;
+      if (accel_x_last_pin_state == 0) {
+        if (accel_x_last_time < now)
+          accel_x_on = now - accel_x_last_time;
+        else
+          accel_x_on = 65536 - (accel_x_last_time - now);
+      } else {
+        if (accel_x_last_time < now)
+          accel_x_off = now - accel_x_last_time;
+        else
+          accel_x_off = 65536 - (accel_x_last_time - now);
+      }
+      accel_x_last_time = now;
+    }
+
+    // ADXL213
+    // 10k[ohm] の抵抗をつけた場合
+    //   T2 = 10*10**3 / (125*10**6) [s]
+    //      = 0.08 / 10**3 [s] = 0.08[ms]
+    //   1/T2 = 12.5[kHz]
+    //   256 の分解能とすると 12.5 * 256 = 3200[kHz] = 3.2[MHz]
+    //
+    // 42k[ohm] の抵抗をつけた場合
+    //   T2 = 42*10**3 / (125*10**6) [s]
+    //      = 0.336 / 10**3 [s] = 0.336[ms]
+    //   1/T2 = 2.976[kHz]
+    //   256 の分解能とすると 2.976 * 256 = 761.9[kHz] = 0.7[MHz]
+    //
+    // 125k[ohm] の抵抗をつけた場合
+    //   T2 = 125*10**3 / (125*10**6) [s]
+    //      = 1 / 10**3 [s] = 1[ms]
+    //   1/T2 = 1[kHz]
+    //   256 の分解能とすると 1 * 256 = 256[kHz]
+    //
+    // 126k[ohm] の抵抗をつけた場合
+    //   T2 = 126*10**3 / (125*10**6) [s]
+    //      = 1.008 / 10**3 [s] = 1.008[ms]
+    //   1/T2 = 0.992[kHz]
+    //   256 の分解能とすると 1 * 256 = 254[kHz]
+    //
+    // Timer は 48MHz/4 で prescaler 1:4 なので
+    // 1/(48*10**6/4/4) * x = 1/(256*10**3)
+    // x = (48*10**6/4/4) / (256*10**3)
+    //   = 3 * 10**3 / 256
+    //   = 11.719, 約12
+
+    // Timer は 48MHz/4 で prescaler 1:8 なので
+    // 1/(48*10**6/4/8) * x = 1/(256*10**3)
+    // x = (48*10**6/4/8) / (256*10**3)
+    //   = 1.5 * 10**3 / 256
+    //   = 11.719, 約12
+  }
+#endif
 }
 
 void init(void)
 {
   TRISA = 0;
-  TRISB = 0;
+  TRISB = 0b11000000; // input RB6,RB7
   TRISC = 0;
   PORTA = 0;
   PORTB = 0;
   PORTC = 0;
+
+  INTCON2bits.RABPU = 0; // enable pull-up
+  WPUB7 = WPUB6 = 1;     // pull up pins
 
   // timer
   // USB Bootloader では 48MHz で動作
   //
   // 8kHz を作るには
   //   48MHz/4 * x = 8kHz としたい
-  //   x = (48/4)*1000/8 = 1500
+  //   1/x = (48/4)*1000/8 = 1500
   //   prescaler を 1:4 とすると 1500/4 = 375
   //
   T0CONbits.T08BIT = 0;     // 16bit timer
   T0CONbits.T0PS = 0b001;   // prescaler 1:4
-  //T0CONbits.T0PS = 0b111;   // prescaler 1:256
   T0CONbits.T0CS = 0;
   T0CONbits.PSA = 0;        // use prescaler
   T0CONbits.TMR0ON = 1;
@@ -135,7 +197,7 @@ void init(void)
   T1CONbits.TMR1ON = 1;
   PIR1bits.TMR1IF = 0;
 
-
+#if 0
   // PWM settings
   CCP1CONbits.CCP1M = 0b1100; // P1A、P1C をアクティブ High、P1B、P1D をアクティブ High
   CCP1CONbits.DC1B  = 0b11;   // デューティ サイクル値の最下位 2 ビット
@@ -145,7 +207,6 @@ void init(void)
   PSTRCONbits.STRC = 1;
   PSTRCONbits.STRD = 1;
   PSTRCONbits.STRSYNC = 1;
-
 
   // 8ビットのデーティー幅とする場合は PR2 が 0x3F となる
   // 16MHz の場合
@@ -158,10 +219,33 @@ void init(void)
   CCPR1L  = 0x00;
   PR2     = 0x3F;            // PWM周期 187.5kHz @48MHz
 
+  // for PWM
   TMR2 = 0;
   T2CONbits.T2CKPS = 0b00;  // prescaler 1:1
   T2CONbits.T2OUTPS = 0;    // postscaler 1:1
   T2CONbits.TMR2ON = 1;     // Timer ON
+
+  // for ADXL213
+  TMR3 = 0;
+  T3CONbits.RD16 = 1;      // 16bit mode
+  //T3CONbits.T3CKPS = 0b10; // prescaler 1:4
+  //T3CONbits.T3CKPS = 0b11; // prescaler 1:8
+  //T3CONbits.T3CKPS = 0b01; // prescaler 1:2
+  T3CONbits.T3CKPS = 0b00; // prescaler 1:1
+  T3CONbits.T3CCP1 = 1;    // use Timer3 clock source
+  T3CONbits.TMR3CS = 0;    // internal clock
+  //T3CONbits.T3SYNC = 1;
+  T3CONbits.TMR3ON = 1;    // Timer ON
+  PIR2bits.TMR3IF = 0;     // clear overflow
+  //PIE2bits.TMR3IE = 1;     // enable interrupt
+
+  // for ADXL213 interrupt pins
+  INTCONbits.RABIF = 1;
+  INTCONbits.RABIE = 1;
+  INTCON2bits.RABIP = 1;   // high level interrupt
+  IOCBbits.IOCB6 = 1;
+  IOCBbits.IOCB7 = 1;
+#endif
 }
 
 /*********************************************************************
@@ -202,7 +286,6 @@ void APP_DeviceCDCBasicDemoInitialize()
 * Output: None
 *
 ********************************************************************/
-int debug_flag = 0;
 void APP_DeviceCDCBasicDemoTasks()
 {
     /* If the user has pressed the button associated with this demo, then we
