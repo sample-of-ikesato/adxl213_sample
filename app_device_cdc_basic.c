@@ -58,14 +58,6 @@ int WaitToReadySerial(void)
   return 0;
 }
 
-//void PutsString(const char *str)
-//{
-//  if (!WaitToReadySerial()) return;
-//  strcpypgm2ram(USB_In_Buffer, (const far rom char*)str);
-//  putsUSBUSART(USB_In_Buffer);
-//  if (!WaitToReadySerial()) return;
-//}
-
 void PutsStringCPtr(char *str)
 {
   if (!WaitToReadySerial()) return;
@@ -78,20 +70,9 @@ void PutsStringCPtr(char *str)
 
 unsigned short gcounter = 0;
 Queue queue;
-//static unsigned char queue_buffer[64];
-//static unsigned char queue_buffer[32];
 static unsigned char queue_buffer[32];
-//unsigned char queue_buffer[32];
-//int hangry = 1;
-int hangry = 0;
-int eaten = 0;
-unsigned char eated_raw = 0;
 int playing = 0;
 int waiting_data = 0;
-int miss = 0;
-unsigned char sequence = 0;
-int wrong = 0;
-int last_wrong = 0;
 unsigned char debug_buffer[32]; // size needs bigger than queue_buffer
 int debug_buffer_size = 0;
 
@@ -122,34 +103,8 @@ void interrupt_func(void)
     if (queue_size(&queue) > 0) {
       unsigned char raw;
       queue_dequeue(&queue, &raw, 1);
-      if (raw != sequence) {
-        wrong++;
-        debug_buffer[0] = wrong;
-        debug_buffer[1] = raw;
-        debug_buffer[2] = sequence;
-        debug_buffer[3] = eaten;
-        debug_buffer[4] = queue_size(&queue);
-        debug_buffer[5] = queue.head - queue.buffer;
-        memcpy(&debug_buffer[6], queue_buffer, sizeof(queue_buffer));
-        debug_buffer_size = 6 + sizeof(queue_buffer);
-        sequence = raw + 1;
-      } else {
-        sequence++;
-      }
-      eaten++;
       CCPR1L = (raw >> 2) & 0x3F;
       CCP1CONbits.DC1B = (raw & 0x3);
-      //if (raw) {
-      //  CCPR1L = 0x3F;
-      //  CCP1CONbits.DC1B = 0b11;
-      //} else {
-      //  CCPR1L = 0;
-      //  CCP1CONbits.DC1B = 0;
-      //}
-      //} else {
-      //miss++;
-      if (raw != 0xFF && raw != 0)
-        miss++;
     }
   }
 }
@@ -265,53 +220,6 @@ void APP_DeviceCDCBasicDemoInitialize()
 int debug_flag = 0;
 void APP_DeviceCDCBasicDemoTasks()
 {
-    {
-      if (last_wrong != wrong) {
-        writeBuffer[0] = 9;
-        writeBuffer[1] = debug_buffer_size;
-        memcpy(&writeBuffer[2], debug_buffer, debug_buffer_size);
-        last_wrong = wrong;
-        if (WaitToReadySerial())
-          putUSBUSART(writeBuffer, writeBuffer[1]+2);
-        WaitToReadySerial();
-      }
-    }
-    if (eaten && (queue_size(&queue) > 0)) {
-      //{
-      //  writeBuffer[0] = 9;
-      //  writeBuffer[1] = 1;
-      //  writeBuffer[2] = eaten;
-      //  if (WaitToReadySerial())
-      //    putUSBUSART(writeBuffer, writeBuffer[1]+2);
-      //  WaitToReadySerial();
-      //}
-      //{
-      //  writeBuffer[0] = 9;
-      //  writeBuffer[1] = 1;
-      //  writeBuffer[2] = miss;
-      //  if (WaitToReadySerial())
-      //    putUSBUSART(writeBuffer, writeBuffer[1]+2);
-      //  WaitToReadySerial();
-      //}
-      //{
-      //  writeBuffer[0] = 9;
-      //  writeBuffer[1] = queue_size(&queue);
-      //  queue_dequeue(&queue, &writeBuffer[2], writeBuffer[1]);
-      //  if (WaitToReadySerial())
-      //    putUSBUSART(writeBuffer, writeBuffer[1]+2);
-      //  WaitToReadySerial();
-      //}
-      //debug_flag = !debug_flag;
-      //if (raw) {
-      //  CCPR1L = 0x3F;
-      //  CCP1CONbits.DC1B = 0b11;
-      //} else {
-      //  CCPR1L = 0;
-      //  CCP1CONbits.DC1B = 0;
-      //}
-    }
-
-
     /* If the user has pressed the button associated with this demo, then we
      * are going to send a "Button Pressed" message to the terminal.
      */
