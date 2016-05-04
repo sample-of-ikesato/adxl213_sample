@@ -41,34 +41,32 @@ start = last = Time.now
 #sp.write([1,0].pack("C*"))
 dfp = File.open("debug.dat", "wb")
 while true
-  buf = sp.read(1)
-  p buf
-  #buf = sp.read(2)
-  #if buf == nil
-  #  puts "Device detatched!"
-  #  break
-  #end
-  #if buf.size < 2
-  #  puts "Error: buffer needs 2 bytes."
-  #  puts buf
-  #  break
-  #end
-  #cmd, size = buf.unpack("C*")
-  #unless [0,1,2,3,4,9].include? cmd
-  #  puts "unrecognize command"
-  #  puts buf
-  #  next
-  #end
-  #if size > 0
-  #  data = sp.read(size).unpack("C*")
-  #  if data.size < size
-  #    puts "Errror: data needs #{size} bytes"
-  #  end
-  #end
-  #if cmd == 4
-  #  p [size, data]
-  #elsif cmd == 9
-  #  dfp.write(data.pack("C*")) if size > 0
-  #end
+  buf = sp.read(2)
+  if buf == nil
+    puts "Device detatched!"
+    break
+  end
+  if buf.size < 2
+    puts "Error: buffer needs 2 bytes."
+    puts buf
+    break
+  end
+  cmd, size = buf.unpack("C*")
+  unless [0,1,2,3,4,9].include? cmd
+    puts "unrecognize command"
+    puts buf
+    next
+  end
+  if size > 0
+    data = sp.read(size).unpack("C*")
+    if data.size < size
+      puts "Errror: data needs #{size} bytes"
+    end
+  end
+  if cmd == 4
+    p [size, data]
+  elsif cmd == 9
+    dfp.write(data.pack("C*")) if size > 0
+  end
 end
 puts ""
