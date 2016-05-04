@@ -95,7 +95,6 @@ void interrupt_func(void)
     }
   }
 
-#if 0
   if (INTCONbits.RABIF == 1) {
     unsigned short now = TMR3;
     TMR3 = 0;
@@ -154,7 +153,6 @@ void interrupt_func(void)
     //   = 1.5 * 10**3 / 256
     //   = 11.719, 約12
   }
-#endif
 }
 
 void init(void)
@@ -197,7 +195,6 @@ void init(void)
   T1CONbits.TMR1ON = 1;
   PIR1bits.TMR1IF = 0;
 
-#if 0
   // PWM settings
   CCP1CONbits.CCP1M = 0b1100; // P1A、P1C をアクティブ High、P1B、P1D をアクティブ High
   CCP1CONbits.DC1B  = 0b11;   // デューティ サイクル値の最下位 2 ビット
@@ -245,7 +242,6 @@ void init(void)
   INTCON2bits.RABIP = 1;   // high level interrupt
   IOCBbits.IOCB6 = 1;
   IOCBbits.IOCB7 = 1;
-#endif
 }
 
 /*********************************************************************
