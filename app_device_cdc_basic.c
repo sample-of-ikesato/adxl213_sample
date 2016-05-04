@@ -79,6 +79,7 @@ unsigned char accel_x_last_pin_state = 0;
 unsigned char accel_y_last_pin_state = 0;
 unsigned char debug_buffer[32]; // size needs bigger than queue_buffer
 int debug_buffer_size = 0;
+unsigned char debug_flag = 0;
 
 #define T0CNT (65536-375)
 char led_state = 1;
@@ -92,6 +93,7 @@ void interrupt_func(void)
       gcounter = 0;
       PORTCbits.RC7 = led_state;
       led_state = !led_state;
+      debug_flag = 1;
     }
   }
 
@@ -319,15 +321,16 @@ void APP_DeviceCDCBasicDemoTasks()
       uint8_t numBytesRead;
       numBytesRead = getsUSBUSART(readBuffer, sizeof(readBuffer));
 
-      //if (playing & waiting_data == 0) {
-      //  if ((size_t)queue_size(&queue) <= (sizeof(queue_buffer)*3/4)) {
-      //    waiting_data = 1;
-      //    writeBuffer[0] = 2;
-      //    writeBuffer[1] = 1;
-      //    writeBuffer[2] = sizeof(queue_buffer) - queue_size(&queue) - 1;
-      //    putUSBUSART(writeBuffer, 3);
-      //  }
-      //}
+      if (debug_flag) {
+        debug_flag = 0;
+        writeBuffer[0] = 4;
+        writeBuffer[1] = 8;
+        *((unsigned short *)(&writeBuffer[2])) = accel_x_on;
+        *((unsigned short *)(&writeBuffer[4])) = accel_x_off;
+        *((unsigned short *)(&writeBuffer[6])) = accel_y_on;
+        *((unsigned short *)(&writeBuffer[8])) = accel_y_off;
+        putUSBUSART(writeBuffer, 8+2);
+      }
     }
 
     CDCTxService();
