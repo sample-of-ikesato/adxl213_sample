@@ -38,7 +38,6 @@ sp = SerialPort.new(PORT, 9600, 8, 1, 0) # 8bit, stopbit 1, parity none
 
 count=0
 start = last = Time.now
-#sp.write([1,0].pack("C*"))
 dfp = File.open("debug.dat", "wb")
 while true
   buf = sp.read(2)
