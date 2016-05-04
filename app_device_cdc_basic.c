@@ -119,6 +119,21 @@ void interrupt_func(void)
       }
       accel_x_last_time = now;
     }
+    if (accel_y_last_pin_state != PORTBbits.RB7) {
+      accel_y_last_pin_state = PORTBbits.RB7;
+      if (accel_y_last_pin_state == 0) {
+        if (accel_y_last_time < now)
+          accel_y_on = now - accel_y_last_time;
+        else
+          accel_y_on = 65536 - (accel_y_last_time - now);
+      } else {
+        if (accel_y_last_time < now)
+          accel_y_off = now - accel_y_last_time;
+        else
+          accel_y_off = 65536 - (accel_y_last_time - now);
+      }
+      accel_y_last_time = now;
+    }
 
     // ADXL213
     // 10k[ohm] の抵抗をつけた場合
