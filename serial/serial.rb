@@ -77,10 +77,10 @@ while true
     accel_x_off = data[2] + (data[3] << 8)
     accel_y_on = data[4] + (data[5] << 8)
     accel_y_off = data[6] + (data[7] << 8)
-    accel_x_on_buff << accel_x_on
-    accel_x_off_buff << accel_x_off
-    accel_y_on_buff << accel_y_on
-    accel_y_off_buff << accel_y_off
+    accel_x_on_buff.unshift(accel_x_on)
+    accel_x_off_buff.unshift(accel_x_off)
+    accel_y_on_buff.unshift(accel_y_on)
+    accel_y_off_buff.unshift(accel_y_off)
     accel_x_on_buff = accel_x_on_buff[0...BUFFLEN]
     accel_x_off_buff = accel_x_off_buff[0...BUFFLEN]
     accel_y_on_buff = accel_y_on_buff[0...BUFFLEN]
