@@ -40,15 +40,17 @@ usage if ARGV.length < 1
 PORT=ARGV.shift
 sp = SerialPort.new(PORT, 9600, 8, 1, 0) # 8bit, stopbit 1, parity none
 
-BUFFLEN = 100
+BUFFLEN = 10
 
 count=0
 start = last = Time.now
 dfp = File.open("debug.dat", "wb")
+ofp = File.open("accel.csv", "w")
 accel_x_on_buff = []
 accel_x_off_buff = []
 accel_y_on_buff = []
 accel_y_off_buff = []
+prevl = prevlg = 0
 while true
   buf = sp.read(2)
   if buf == nil
@@ -85,7 +87,21 @@ while true
     accel_x_off_buff = accel_x_off_buff[0...BUFFLEN]
     accel_y_on_buff = accel_y_on_buff[0...BUFFLEN]
     accel_y_off_buff = accel_y_off_buff[0...BUFFLEN]
-    p [[accel_x_on, accel_x_off, accel_y_on, accel_y_off], [ave(accel_x_on_buff), ave(accel_x_off_buff), ave(accel_y_on_buff), ave(accel_y_off_buff)], [ave(accel_x_on_buff)+ave(accel_x_off_buff), ave(accel_y_on_buff)+ave(accel_y_off_buff)]]
+
+    #x = ave(accel_x_on_buff)
+    #y = ave(accel_y_on_buff)
+    x = accel_x_on
+    y = accel_y_on
+
+    l = x**2 + y**2
+    lg = Math.sqrt((((x.to_f/2664)-0.5)/0.3)**2 + (((y.to_f/2664)-0.5)/0.3)**2)
+    ofp.puts [x, y, l, sprintf("%.6f",lg), l-prevl, sprintf("%.6f",lg-prevlg)].join("\t")
+    ofp.flush
+    prevl = l
+    prevlg = lg
+
+    diff = Time.now - start
+    p [sprintf("%02d:%02d.%03d",diff/60, diff%60, (diff*1000)%1000), [accel_x_on, accel_x_off, accel_y_on, accel_y_off], [ave(accel_x_on_buff), ave(accel_x_off_buff), ave(accel_y_on_buff), ave(accel_y_off_buff)], [ave(accel_x_on_buff)+ave(accel_x_off_buff), ave(accel_y_on_buff)+ave(accel_y_off_buff)]]
   elsif cmd == 9
     dfp.write(data.pack("C*")) if size > 0
   end

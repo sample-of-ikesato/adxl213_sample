@@ -85,7 +85,7 @@ void interrupt_func(void)
     TMR0 = T0CNT;
     INTCONbits.TMR0IF = 0;
     gcounter++;
-    if (gcounter > 8000/60) {
+    if (gcounter > 8000/120) {
       gcounter = 0;
       PORTCbits.RC7 = led_state;
       led_state = !led_state;
