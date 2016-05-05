@@ -32,6 +32,7 @@
 #include "app_device_cdc_basic.h"
 #include "usb_config.h"
 #include "queue.h"
+#include "accel.h"
 
 /** VARIABLES ******************************************************/
 
@@ -69,14 +70,8 @@ void PutsStringCPtr(char *str)
 
 
 unsigned short gcounter = 0;
-unsigned short accel_x_on = 0;
-unsigned short accel_y_on = 0;
-unsigned short accel_x_off = 0;
-unsigned short accel_y_off = 0;
-unsigned short accel_x_last_time = 0;
-unsigned short accel_y_last_time = 0;
-unsigned char accel_x_last_pin_state = 0;
-unsigned char accel_y_last_pin_state = 0;
+Accel accel_x;
+Accel accel_y;
 unsigned char debug_buffer[32]; // size needs bigger than queue_buffer
 int debug_buffer_size = 0;
 unsigned char debug_flag = 0;
@@ -104,36 +99,8 @@ void interrupt_func(void)
     //PIR2bits.TMR3IF = 0;
     INTCONbits.RABIF = 0;
     debug_counter++;
-    if (accel_x_last_pin_state != PORTBbits.RB6) {
-      accel_x_last_pin_state = PORTBbits.RB6;
-      if (accel_x_last_pin_state == 0) {
-        if (accel_x_last_time < now)
-          accel_x_on = now - accel_x_last_time;
-        else
-          accel_x_on = 65536 - (accel_x_last_time - now);
-      } else {
-        if (accel_x_last_time < now)
-          accel_x_off = now - accel_x_last_time;
-        else
-          accel_x_off = 65536 - (accel_x_last_time - now);
-      }
-      accel_x_last_time = now;
-    }
-    if (accel_y_last_pin_state != PORTBbits.RB7) {
-      accel_y_last_pin_state = PORTBbits.RB7;
-      if (accel_y_last_pin_state == 0) {
-        if (accel_y_last_time < now)
-          accel_y_on = now - accel_y_last_time;
-        else
-          accel_y_on = 65536 - (accel_y_last_time - now);
-      } else {
-        if (accel_y_last_time < now)
-          accel_y_off = now - accel_y_last_time;
-        else
-          accel_y_off = 65536 - (accel_y_last_time - now);
-      }
-      accel_y_last_time = now;
-    }
+    accel_pin_state_changed(&accel_x, PORTBbits.RB6, now);
+    accel_pin_state_changed(&accel_y, PORTBbits.RB7, now);
 
     // ADXL213
     // 10k[ohm] の抵抗をつけた場合
@@ -342,10 +309,10 @@ void APP_DeviceCDCBasicDemoTasks()
         debug_flag = 0;
         writeBuffer[0] = 4;
         writeBuffer[1] = 9;
-        *((unsigned short *)(&writeBuffer[2])) = accel_x_on;
-        *((unsigned short *)(&writeBuffer[4])) = accel_x_off;
-        *((unsigned short *)(&writeBuffer[6])) = accel_y_on;
-        *((unsigned short *)(&writeBuffer[8])) = accel_y_off;
+        *((unsigned short *)(&writeBuffer[2])) = accel_x.on;
+        *((unsigned short *)(&writeBuffer[4])) = accel_x.off;
+        *((unsigned short *)(&writeBuffer[6])) = accel_y.on;
+        *((unsigned short *)(&writeBuffer[8])) = accel_y.off;
         writeBuffer[10] = debug_counter;
         putUSBUSART(writeBuffer, writeBuffer[1]+2);
       }

@@ -17,6 +17,10 @@ def usage()
   exit 1
 end
 
+def ave(ary)
+  ary.inject {|sum,v| sum + v} / ary.count
+end
+
 debug=false
 verbose=false
 OptionParser.new {|opt|
@@ -36,9 +40,15 @@ usage if ARGV.length < 1
 PORT=ARGV.shift
 sp = SerialPort.new(PORT, 9600, 8, 1, 0) # 8bit, stopbit 1, parity none
 
+BUFFLEN = 100
+
 count=0
 start = last = Time.now
 dfp = File.open("debug.dat", "wb")
+accel_x_on_buff = []
+accel_x_off_buff = []
+accel_y_on_buff = []
+accel_y_off_buff = []
 while true
   buf = sp.read(2)
   if buf == nil
@@ -67,8 +77,15 @@ while true
     accel_x_off = data[2] + (data[3] << 8)
     accel_y_on = data[4] + (data[5] << 8)
     accel_y_off = data[6] + (data[7] << 8)
-    counter = data[8]
-    p [accel_x_on, accel_x_off, accel_y_on, accel_y_off, counter]
+    accel_x_on_buff << accel_x_on
+    accel_x_off_buff << accel_x_off
+    accel_y_on_buff << accel_y_on
+    accel_y_off_buff << accel_y_off
+    accel_x_on_buff = accel_x_on_buff[0...BUFFLEN]
+    accel_x_off_buff = accel_x_off_buff[0...BUFFLEN]
+    accel_y_on_buff = accel_y_on_buff[0...BUFFLEN]
+    accel_y_off_buff = accel_y_off_buff[0...BUFFLEN]
+    p [[accel_x_on, accel_x_off, accel_y_on, accel_y_off], [ave(accel_x_on_buff), ave(accel_x_off_buff), ave(accel_y_on_buff), ave(accel_y_off_buff)], [ave(accel_x_on_buff)+ave(accel_x_off_buff), ave(accel_y_on_buff)+ave(accel_y_off_buff)]]
   elsif cmd == 9
     dfp.write(data.pack("C*")) if size > 0
   end
