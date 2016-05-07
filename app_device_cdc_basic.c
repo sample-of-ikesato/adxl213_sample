@@ -104,7 +104,7 @@ void interrupt_func(void)
     //PIR2bits.TMR3IF = 0;
     INTCONbits.RABIF = 0;
     debug_counter++;
-    accel_pin_state_changed(&accel_x, PORTBbits.RB6, now);
+    accel_pin_state_changed(&accel_x, PORTBbits.RB5, now);
     accel_pin_state_changed(&accel_y, PORTBbits.RB7, now);
 
     // ADXL213
@@ -149,14 +149,15 @@ void interrupt_func(void)
 void init(void)
 {
   TRISA = 0;
-  TRISB = 0b11000000; // input RB6,RB7
+  TRISB = 0b10100000; // input RB5,RB7
   TRISC = 0;
   PORTA = 0;
   PORTB = 0;
   PORTC = 0;
+  ANSELH = ANSEL = 0;
 
   INTCON2bits.RABPU = 0; // enable pull-up
-  WPUB7 = WPUB6 = 1;     // pull up pins
+  WPUB7 = WPUB5 = 1;     // pull up pins
 
   // timer
   // USB Bootloader では 48MHz で動作
@@ -231,7 +232,7 @@ void init(void)
   INTCONbits.RABIF = 1;
   INTCONbits.RABIE = 1;
   INTCON2bits.RABIP = 1;   // high level interrupt
-  IOCBbits.IOCB6 = 1;
+  IOCBbits.IOCB5 = 1;
   IOCBbits.IOCB7 = 1;
 
   // accel
@@ -338,7 +339,7 @@ void APP_DeviceCDCBasicDemoTasks()
       if (accel_y.value < (unsigned short)(4585*(1.0-THRESHOLD)) || accel_y.value > (unsigned short)(4585*(1.0+THRESHOLD)))
         led_y_timer = (unsigned short)(0.5*8000); // 0.5[s]
 
-      PORTBbits.RB5 = (led_x_timer > 0 ? 1 : 0);
+      PORTCbits.RC1 = (led_x_timer > 0 ? 1 : 0);
       PORTCbits.RC7 = (led_y_timer > 0 ? 1 : 0);
     }
 }
