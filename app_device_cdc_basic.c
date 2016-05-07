@@ -72,10 +72,13 @@ void PutsStringCPtr(char *str)
 unsigned short gcounter = 0;
 Accel accel_x;
 Accel accel_y;
+unsigned short led_x_timer = 0;
+unsigned short led_y_timer = 0;
 unsigned char debug_buffer[32]; // size needs bigger than queue_buffer
 int debug_buffer_size = 0;
 unsigned char debug_flag = 0;
 unsigned short debug_counter = 0;
+unsigned char calc_accel = 0;
 
 #define T0CNT (65536-375)
 char led_state = 1;
@@ -87,10 +90,12 @@ void interrupt_func(void)
     gcounter++;
     if (gcounter > 8000/120) {
       gcounter = 0;
-      PORTCbits.RC7 = led_state;
       led_state = !led_state;
       debug_flag = 1;
+      calc_accel = 1;
     }
+    if (led_x_timer > 0) led_x_timer--;
+    if (led_y_timer > 0) led_y_timer--;
   }
 
   if (INTCONbits.RABIF == 1) {
@@ -228,6 +233,10 @@ void init(void)
   INTCON2bits.RABIP = 1;   // high level interrupt
   IOCBbits.IOCB6 = 1;
   IOCBbits.IOCB7 = 1;
+
+  // accel
+  accel_init(&accel_x);
+  accel_init(&accel_y);
 }
 
 /*********************************************************************
@@ -317,6 +326,19 @@ void APP_DeviceCDCBasicDemoTasks()
         putUSBUSART(writeBuffer, writeBuffer[1]+2);
       }
     }
-
     CDCTxService();
+
+    if (calc_accel) {
+      calc_accel = 0;
+      accel_apply_filter(&accel_x);
+      accel_apply_filter(&accel_y);
+      #define THRESHOLD 0.05
+      if (accel_x.value < (unsigned short)(4585*(1.0-THRESHOLD)) || accel_x.value > (unsigned short)(4585*(1.0+THRESHOLD)))
+        led_x_timer = (unsigned short)(0.5*8000); // 0.5[s]
+      if (accel_y.value < (unsigned short)(4585*(1.0-THRESHOLD)) || accel_y.value > (unsigned short)(4585*(1.0+THRESHOLD)))
+        led_y_timer = (unsigned short)(0.5*8000); // 0.5[s]
+
+      PORTBbits.RB5 = (led_x_timer > 0 ? 1 : 0);
+      PORTCbits.RC7 = (led_y_timer > 0 ? 1 : 0);
+    }
 }
